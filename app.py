@@ -9,6 +9,7 @@ from pymodbus.client.sync import ModbusSerialClient as ModbusClient
 from chart import LiveTimeSeriesPlot
 
 stop_flag = threading.Event()
+thread1 = None
 
 
 def read_modbus_registers(modbus_client: ModbusClient, slave_id, starting_address):
@@ -117,19 +118,19 @@ def start_app():
     label_address1 = tk.Label(app, text="Data Address")
     label_address1.grid(row=0, column=0, padx=5, pady=5, sticky="nswe")
     entry_address1 = tk.Entry(app)
-    entry_address1.grid(row=1, column=0, padx=5, pady=5, sticky="nswe")
+    entry_address1.grid(row=0, column=1, padx=5, pady=5, sticky="nswe")
     entry_address1.insert(0, 0)
 
     port_text = tk.Label(app, text="Port")
-    port_text.grid(row=2, column=0, padx=5, pady=5, sticky="nswe")
+    port_text.grid(row=1, column=0, padx=5, pady=5, sticky="nswe")
     port_entry = tk.Entry(app)
-    port_entry.grid(row=2, column=1, padx=5, pady=5, sticky="nswe")
+    port_entry.grid(row=1, column=1, padx=5, pady=5, sticky="nswe")
 
     button_action = tk.Button(app, text="Connect", command=connect)
-    button_action.grid(row=2, column=2, padx=5, pady=5, sticky="nswe")
+    button_action.grid(row=1, column=2, padx=5, pady=5, sticky="nswe")
 
     read_action1 = tk.Button(app, text="Read & Plot", command=read, state=tk.DISABLED)
-    read_action1.grid(row=1, column=1, padx=5, pady=5, sticky="nswe")
+    read_action1.grid(row=0, column=2, padx=5, pady=5, sticky="nswe")
 
     # Create a readonly text widget
     status = tk.Text(app, font=("Arial", 12), wrap=tk.WORD, state=tk.DISABLED, height=8)
