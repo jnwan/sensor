@@ -8,9 +8,6 @@ from pymodbus.client.sync import ModbusSerialClient as ModbusClient
 
 from chart import LiveTimeSeriesPlot
 
-stop_flag = threading.Event()
-thread1 = None
-
 
 def read_modbus_registers(modbus_client: ModbusClient, slave_id, starting_address):
     try:
@@ -74,39 +71,39 @@ def connect():
         button_action.config(state=tk.DISABLED)
 
 
-def read_and_update_chart(starting_address):
-    global client, chart1, chart2
+def read_and_update_chart(client, chart1, chart2, address, stop_flag):
     while not stop_flag.is_set():
-        int_val, float_val = read_modbus_registers(client, 1, int(starting_address))
+        int_val, float_val = read_modbus_registers(client, 1, address)
         chart1.add_data_point(int_val)
         chart2.add_data_point(float_val)
         time.sleep(0.5)
 
 
 def read():
-    global chart1, chart2, thread1, entry_address1
+    global chart1, chart2, thread1, entry_address1, stop_flag
     chart1 = LiveTimeSeriesPlot("int.csv")
     chart2 = LiveTimeSeriesPlot("float.csv")
     if thread1 is None:
         thread1 = threading.Thread(
             target=read_and_update_chart,
-            args=(entry_address1.get()),
+            args=(client, chart1, chart2, int(entry_address1.get()), stop_flag),
         )
-
         thread1.start()
     chart1.show()
     chart2.show()
 
 
 def close():
-    global thread1
+    global thread1, stop_flag
     stop_flag.set()
     if thread1 and thread1.is_alive():
         thread1.join()
 
 
 def start_app():
-    global app, client, status, button_action, port_entry, entry_address1, read_action1
+    global app, client, status, button_action, port_entry, entry_address1, read_action1, stop_flag
+
+    stop_flag = threading.Event()
 
     # Create the main application window
     app = tk.Tk()
