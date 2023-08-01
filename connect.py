@@ -2,8 +2,10 @@ import serial
 import time
 from pymodbus.client.sync import ModbusSerialClient as ModbusClient
 
+BAUDRATE = 921600
 
-def connect_port(port_name, baudrate=921600, timeout=5):
+
+def connect_port(port_name, baudrate=BAUDRATE, timeout=5):
     try:
         # Try to open the serial port
         ser = serial.Serial(port=port_name, baudrate=baudrate, timeout=timeout)
@@ -29,7 +31,7 @@ def connect_port(port_name, baudrate=921600, timeout=5):
         return None
 
 
-def scan_ports_and_connect(baudrate=921600, timeout=5):
+def scan_ports_and_connect(baudrate=BAUDRATE, timeout=5):
     # List of common Modbus RTU port names to scan
     port_names = [
         "COM{}".format(i) for i in range(1, 17)
