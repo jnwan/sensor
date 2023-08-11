@@ -1,8 +1,12 @@
 import serial
 import time
 from pymodbus.client.sync import ModbusSerialClient as ModbusClient
+from config import ConfigSingleton
 
-BAUDRATE = 921600
+from enum import Enum
+
+BAUDRATE = ConfigSingleton().get_config()["BAUDRATE"]
+SLAVE_ID = ConfigSingleton().get_config()["SLAVE_ID"]
 
 
 def connect_port(port_name, baudrate=BAUDRATE, timeout=5):
@@ -34,8 +38,8 @@ def connect_port(port_name, baudrate=BAUDRATE, timeout=5):
 def scan_ports_and_connect(baudrate=BAUDRATE, timeout=5):
     # List of common Modbus RTU port names to scan
     port_names = [
-        "COM{}".format(i) for i in range(1, 17)
-    ]  # Assuming up to 16 COM ports, adjust as needed for your system
+        "COM{}".format(i) for i in range(1, 33)
+    ]  # Assuming up to 32 COM ports, adjust as needed for your system
 
     modbus_clients = []
 
