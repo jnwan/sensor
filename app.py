@@ -8,6 +8,7 @@ from config import ConfigSingleton
 from custom_data import CustomData, DataMode
 from frame_chart import TimeChart, FFTChart
 from scheduler import Scheduler
+import customtkinter
 import logging
 
 logging.basicConfig(
@@ -33,16 +34,16 @@ def close(
     scheduler: Scheduler,
 ):
     logger.info("Closing App...")
-    scheduler.stop()
-    logger.info("Scheduled stopped")
+    custom_data.stop()
+    logger.info("Chart data refresh stopped")
     time_chart.stop()
     logger.info("Time chart closed")
     fft_chart.stop()
     logger.info("FFT chart closed")
     indicator.stop()
     logger.info("Indicator refresh stopped")
-    custom_data.stop()
-    logger.info("Chart data refresh stopped")
+    scheduler.stop()
+    logger.info("Scheduled stopped")
 
 
 START_DEVICE_WRITE_ADDRESS = ConfigSingleton().get_config()[
@@ -93,36 +94,37 @@ def main():
     global CLIENT
     if DEVICE_PORT:
         CLIENT = connect_port(DEVICE_PORT)
+        assert CLIENT is not None, f"Can't connect to port {DEVICE_PORT}"
     else:
         clients = scan_ports_and_connect()
         assert len(clients) == 1, "Can't find proper port to connect"
         CLIENT = clients[0]
 
     try:
-        root = tk.Tk()
+        root = customtkinter.CTk()
         root.geometry("1920x1080")  # Set the size of the window
 
         scheduler = Scheduler()
 
         # Create two frames for the sections
-        left_frame = tk.Frame(root, padx=10, pady=10)  # First section with 1/3 width
-        right_frame = tk.Frame(root, padx=10, pady=10)  # Second section with 2/3 width
+        left_frame = customtkinter.CTkFrame(root)  # First section with 1/3 width
+        right_frame = customtkinter.CTkFrame(root)  # Second section with 2/3 width
 
         # Define the grid layout
         root.grid_rowconfigure(0, weight=1)
         root.grid_columnconfigure(0, weight=1)
-        root.grid_columnconfigure(1, weight=3)
+        root.grid_columnconfigure(1, weight=6)
 
         # Place the frames on the grid
         left_frame.grid(row=0, column=0, sticky="nsew")
         right_frame.grid(row=0, column=1, sticky="nsew")
 
-        lights_frame = tk.Frame(left_frame)
-        buttons_frame = tk.Frame(left_frame)
+        lights_frame = customtkinter.CTkFrame(left_frame)
+        buttons_frame = customtkinter.CTkFrame(left_frame)
 
         left_frame.grid_columnconfigure(0, weight=1)
         left_frame.grid_rowconfigure(0, weight=1)
-        left_frame.grid_rowconfigure(1, weight=2)
+        left_frame.grid_rowconfigure(1, weight=6)
 
         lights_frame.grid(row=0, column=0, sticky="nsew")
         buttons_frame.grid(row=1, column=0, sticky="nsew")
@@ -132,19 +134,23 @@ def main():
         lights_frame.grid_columnconfigure(1, weight=1)
         lights_frame.grid_columnconfigure(2, weight=1)
 
-        temp_frame = tk.Frame(lights_frame)
+        temp_frame = customtkinter.CTkFrame(lights_frame)
         temp_frame.grid(row=0, column=0, sticky="nsew")
-        temp_label = tk.Label(text="温控稳定", bg="grey")
+        temp_label = customtkinter.CTkLabel(temp_frame, text="温控稳定", fg_color="grey")
         temp_label.place(in_=temp_frame, anchor="c", relx=0.5, rely=0.5)
 
-        laser_frame = tk.Frame(lights_frame)
+        laser_frame = customtkinter.CTkFrame(lights_frame)
         laser_frame.grid(row=0, column=1, sticky="nsew")
-        laser_label = tk.Label(text="激光器电流锁定", bg="grey")
+        laser_label = customtkinter.CTkLabel(
+            laser_frame, text="激光器电流锁定", fg_color="grey"
+        )
         laser_label.place(in_=laser_frame, anchor="c", relx=0.5, rely=0.5)
 
-        radio_frame = tk.Frame(lights_frame)
+        radio_frame = customtkinter.CTkFrame(lights_frame)
         radio_frame.grid(row=0, column=2, sticky="nsew")
-        radio_label = tk.Label(text="射频频率锁定", bg="grey")
+        radio_label = customtkinter.CTkLabel(
+            radio_frame, text="射频频率锁定", fg_color="grey"
+        )
         radio_label.place(in_=radio_frame, anchor="c", relx=0.5, rely=0.5)
 
         indicator = Indicator(
@@ -162,53 +168,76 @@ def main():
         buttons_frame.grid_rowconfigure(2, weight=1)
         buttons_frame.grid_rowconfigure(3, weight=1)
 
-        # connect_button = tk.Button(buttons_frame, text="建立连接")
+        # connect_button = customtkinter.CTkButton(buttons_frame, text="建立连接")
         # connect_button.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
-        start_button = tk.Button(buttons_frame, text="启动设备", command=start_device)
+        start_button = customtkinter.CTkButton(
+            buttons_frame, text="启动设备", command=start_device
+        )
         start_button.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
-        temp_button = tk.Button(buttons_frame, text="启动加温", command=increase_temp)
+        temp_button = customtkinter.CTkButton(
+            buttons_frame, text="启动加温", command=increase_temp
+        )
         temp_button.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
 
-        lock_laser_button = tk.Button(buttons_frame, text="激光器电流锁定", command=lock_laser)
+        lock_laser_button = customtkinter.CTkButton(
+            buttons_frame, text="激光器电流锁定", command=lock_laser
+        )
         lock_laser_button.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
 
-        start_dds_button = tk.Button(buttons_frame, text="DDS扫频", command=start_dds)
+        start_dds_button = customtkinter.CTkButton(
+            buttons_frame, text="DDS扫频", command=start_dds
+        )
         start_dds_button.grid(row=3, column=0, sticky="nsew", padx=10, pady=10)
 
-        read_button_frame = tk.Frame(right_frame, width=30)
-        read_button_frame.pack(fill="y", side=tk.LEFT)
+        read_button_frame = customtkinter.CTkFrame(right_frame, width=50)
+        read_button_frame.pack(fill="both", side=tk.LEFT)
 
-        lowpass_cutoff_label = tk.Label(read_button_frame, text="低通滤波")
+        lowpass_cutoff_label = customtkinter.CTkLabel(read_button_frame, text="低通滤波")
         lowpass_cutoff_label.pack()
-        lowpass_cutoff_entry = tk.Entry(read_button_frame, width=20)
-        lowpass_cutoff_entry.pack()
+        lowpass_cutoff_entry = customtkinter.CTkEntry(read_button_frame, width=20)
+        lowpass_cutoff_entry.pack(fill="both")
 
-        highpass_cutoff_label = tk.Label(read_button_frame, text="高通滤波")
+        highpass_cutoff_label = customtkinter.CTkLabel(read_button_frame, text="高通滤波")
         highpass_cutoff_label.pack()
-        highpass_cutoff_entry = tk.Entry(read_button_frame, width=20)
-        highpass_cutoff_entry.pack()
+        highpass_cutoff_entry = customtkinter.CTkEntry(read_button_frame, width=20)
+        highpass_cutoff_entry.pack(fill="both")
 
-        read_sin_button = tk.Button(
+        read_sin_button = customtkinter.CTkButton(
             read_button_frame,
             text="读取Sin",
-            width=20,
-            height=4,
+            width=40,
+            height=6,
             command=lambda: read_sin(custom_data),
         )
         read_sin_button.pack(padx=5, pady=5)
 
-        read_sin_DDS = tk.Button(
+        read_sin_DDS = customtkinter.CTkButton(
             read_button_frame,
             text="读取DDS",
-            width=20,
-            height=4,
+            width=40,
+            height=6,
             command=lambda: read_dds(custom_data),
         )
         read_sin_DDS.pack(padx=5, pady=5)
 
-        chart_download_frame = tk.Frame(right_frame, bg="green")
+        custom_data = CustomData(CLIENT, scheduler.get_scheduler())
+
+        download_on = customtkinter.StringVar(value="off")
+        download_switch = customtkinter.CTkSwitch(
+            read_button_frame,
+            width=40,
+            height=6,
+            text="下载",
+            command=lambda: custom_data.set_download(download_on.get() == "on"),
+            variable=download_on,
+            onvalue="on",
+            offvalue="off",
+        )
+        download_switch.pack(padx=5, pady=5, fill="x")
+
+        chart_download_frame = customtkinter.CTkFrame(right_frame)
         chart_download_frame.pack(fill="both", side=tk.RIGHT, expand=True)
 
         # chart_download_frame.grid_columnconfigure(0, weight=1)
@@ -216,10 +245,9 @@ def main():
         # chart_download_frame.grid_rowconfigure(1, weight=6)
         # chart_download_frame.grid_rowconfigure(2, weight=1)
 
-        time_chart_frame = tk.Frame(chart_download_frame, bg="blue")
+        time_chart_frame = customtkinter.CTkFrame(chart_download_frame)
         time_chart_frame.pack(side=tk.TOP, fill="both", expand=True)
 
-        custom_data = CustomData(CLIENT, scheduler.get_scheduler())
         time_chart = TimeChart(
             custom_data,
             time_chart_frame,
@@ -232,7 +260,7 @@ def main():
         # canvas.draw()
         # canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
-        fft_chart_frame = tk.Frame(chart_download_frame, bg="green")
+        fft_chart_frame = customtkinter.CTkFrame(chart_download_frame)
         fft_chart_frame.pack(side=tk.TOP, fill="both", expand=True)
 
         fft_chart = FFTChart(
@@ -240,11 +268,13 @@ def main():
             fft_chart_frame,
         )
 
-        # download_frame = tk.Frame(chart_download_frame, height=10, pady=5)
-        # download_frame.pack(side=tk.BOTTOM, fill="x")
+        # download_frame = customtkinter.CTkFrame(chart_download_frame)
+        # download_frame.pack(side=customtkinter.BOTTOM, fill="x")
 
-        # download_button = tk.Button(download_frame, text="Download", width=10)
-        # download_button.pack(side=tk.RIGHT)
+        # download_button = customtkinter.CTkButton(
+        #     download_frame, text="Download", width=10
+        # )
+        # download_button.pack(side=customtkinter.RIGHT)
 
         def on_closing():
             close(indicator, custom_data, time_chart, fft_chart, scheduler)

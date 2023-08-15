@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-import tkinter as tk
+import customtkinter
 from custom_data import CustomData
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from config import ConfigSingleton
@@ -19,9 +19,9 @@ class TimeChart:
     def __init__(
         self,
         custome_data: CustomData,
-        master: tk.Frame,
-        lowpass_cutoff_entry: tk.Entry,
-        highpass_cutoff_entry: tk.Entry,
+        master: customtkinter.CTkFrame,
+        lowpass_cutoff_entry: customtkinter.CTkEntry,
+        highpass_cutoff_entry: customtkinter.CTkEntry,
     ):
         self.fig, self.ax = plt.subplots()
         (self.line,) = self.ax.plot([], [], lw=2, label="Time Series")
@@ -29,24 +29,30 @@ class TimeChart:
         self.master = master
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.master)
         self.canvas.draw()
-        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        self.canvas.get_tk_widget().pack(
+            side=customtkinter.TOP, fill=customtkinter.BOTH, expand=1
+        )
         self.custom_data = custome_data
 
         self.ax.relim()
         self.ax.autoscale_view()
 
-        self.update()
         self.lowpass_cutoff_entry = lowpass_cutoff_entry
         self.highpass_cutoff_entry = highpass_cutoff_entry
+        self.running = True
+        self.update()
 
     def __del__(self):
         self.stop()
         plt.close()
 
     def stop(self):
+        self.running = False
         self.master.after_cancel(self.schedule_id)
 
     def update(self):
+        if self.running:
+            self.schedule_id = self.master.after(1000, self.update)
         prcessed_data = self.custom_data.get_processed_data()
         if prcessed_data:
             logger.info(f"Got processed data length: {len(prcessed_data)}")
@@ -74,22 +80,24 @@ class TimeChart:
         self.ax.autoscale_view()
         self.canvas.draw()
 
-        self.schedule_id = self.master.after(1000, self.update)
-
 
 class FFTChart:
-    def __init__(self, custome_data: CustomData, master: tk.Frame):
+    def __init__(self, custome_data: CustomData, master: customtkinter.CTkFrame):
         self.fig, self.ax = plt.subplots()
         (self.line,) = self.ax.loglog([], [])
         self.ax.set_ylabel("Value")
         self.master = master
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.master)
         self.canvas.draw()
-        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        self.canvas.get_tk_widget().pack(
+            side=customtkinter.TOP, fill=customtkinter.BOTH, expand=1
+        )
         self.custom_data = custome_data
 
         self.ax.relim()
         self.ax.autoscale_view()
+
+        self.running = True
 
         self.update()
 
@@ -98,10 +106,12 @@ class FFTChart:
         plt.close()
 
     def stop(self):
-        if self.schedule_id:
-            self.master.after_cancel(self.schedule_id)
+        self.running = False
+        self.master.after_cancel(self.schedule_id)
 
     def update(self):
+        if self.running:
+            self.schedule_id = self.master.after(1000, self.update)
         data = self.custom_data.get_original_data()
         if data:
             times, raw_data = zip(*data)
@@ -114,5 +124,3 @@ class FFTChart:
         self.ax.relim()
         self.ax.autoscale_view()
         self.canvas.draw()
-
-        self.schedule_id = self.master.after(1000, self.update)

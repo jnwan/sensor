@@ -28,6 +28,7 @@ def connect_port(port_name, baudrate=BAUDRATE, timeout=5):
             timeout=timeout,
         )
         modbus_client.connect()
+        # if modbus_client.connect():
         logger.info(f"Successfully connect to {ser.port}")
         return modbus_client
 

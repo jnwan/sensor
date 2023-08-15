@@ -1,6 +1,4 @@
-import time
-import tkinter as tk
-import threading
+import customtkinter
 import sched
 from config import ConfigSingleton
 from pymodbus.client.sync import ModbusSerialClient as ModbusClient
@@ -30,7 +28,7 @@ class Indicator:
         self,
         modbus_client: ModbusClient,
         scheduler: sched.scheduler,
-        app: tk.Tk,
+        app: customtkinter.CTk,
         temp_label,
         laser_label,
         radio_label,
@@ -47,15 +45,19 @@ class Indicator:
         self.radio_on = False
 
         self.schedule_id = None
+
+        self.running = True
+
+        self.ui_event = None
+
         self.refresh()
         self.refresh_ui()
-
-        self.ui_event = []
 
     def __del__(self):
         self.stop()
 
     def stop(self):
+        self.running = False
         if self.schedule_id:
             try:
                 self.scheduler.cancel(self.schedule_id)
@@ -67,10 +69,11 @@ class Indicator:
     def refresh_ui(
         self,
     ) -> None:
-        self.ui_event = self.app.after(1000, self.refresh_ui)
-        self.temp_label.config(bg="green" if self.temp_on else "grey")
-        self.laser_label.config(bg="green" if self.laser_on else "grey")
-        self.radio_label.config(bg="green" if self.radio_on else "grey")
+        if self.running:
+            self.ui_event = self.app.after(1000, self.refresh_ui)
+        self.temp_label.configure(fg_color="green" if self.temp_on else "grey")
+        self.laser_label.configure(fg_color="green" if self.laser_on else "grey")
+        self.radio_label.configure(fg_color="green" if self.radio_on else "grey")
 
     def refresh(
         self,
@@ -104,4 +107,6 @@ class Indicator:
             )
         except:
             logger.info(f"Exception when reading indicator data")
-        self.schedule_id = self.scheduler.enter(1, 5, self.refresh)
+
+        if self.running:
+            self.schedule_id = self.scheduler.enter(1, 5, self.refresh)

@@ -4,6 +4,7 @@ from config import ConfigSingleton
 from pymodbus.client.sync import ModbusSerialClient as ModbusClient
 from data_api import read_modbus, DataType, read_custom_data
 import sched
+import customtkinter
 
 from datetime import datetime, timedelta
 
@@ -65,6 +66,7 @@ class CustomData:
 
         self.dds_file = open("dds.csv", "w", newline="")
         self.dds_csv_writer = csv.writer(self.dds_file)
+        self.download_on = False
 
         self.running = False
 
@@ -109,7 +111,8 @@ class CustomData:
             ]
 
             processed_data.extend(timed_data)
-            csv_writer.writerows(original_data)
+            if self.download_on:
+                csv_writer.writerows(original_data)
         else:
             pass
 
@@ -138,6 +141,9 @@ class CustomData:
         if not self.processor.is_alive():
             self.processor.start()
 
+    def set_download(self, value: bool):
+        self.download_on = value
+
     def set_mode(self, data_mode: DataMode):
         with self.lock:
             self.data_mode = data_mode
@@ -147,6 +153,7 @@ class CustomData:
             self.refresh()
 
     def stop(self):
+        self.running = False
         self.stop_flag.set()
 
         if self.processor.is_alive():
@@ -193,6 +200,7 @@ class CustomData:
             logger.info(
                 f"Get {len(response)} data points from device at {self.current_time}"
             )
-        self.scheduler_id = self.scheduler.enter(
-            SLEEP_TIME_MS * 1.0 / 1000, 1, self.refresh
-        )
+        if self.running:
+            self.scheduler_id = self.scheduler.enter(
+                SLEEP_TIME_MS * 1.0 / 1000, 1, self.refresh
+            )
