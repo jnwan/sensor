@@ -1,6 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def fft(data, fs):
     fft = np.fft.fftshift(np.fft.fft(data))  # 双边谱离散傅里叶变换，得到复数数组

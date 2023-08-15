@@ -1,5 +1,6 @@
 # config for sensor app
 
+DEVICE_PORT: "COM2"
 FAKE_CUSTOM_DATA: 1
 SLAVE_ID: 1
 BAUDRATE: 921600

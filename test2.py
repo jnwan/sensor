@@ -6,6 +6,10 @@ import struct
 
 import crcmod
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Create a CRC16 function
 crc16_func = crcmod.predefined.mkPredefinedCrcFun("crc-16")
 
@@ -37,10 +41,10 @@ byte_array = bytes.fromhex(hex_string.replace(" ", ""))
 
 provided_crc = byte_array[809 - 2] << 8 | byte_array[809 - 1]
 
-print(f"provided crc: {provided_crc}")
-print(f"calculated crc: {calculate_crc(byte_array[: (809 - 2)])}")
+logger.info(f"provided crc: {provided_crc}")
+logger.info(f"calculated crc: {calculate_crc(byte_array[: (809 - 2)])}")
 
-print("".join(format(byte, "02x") for byte in byte_array))
+logger.info("".join(format(byte, "02x") for byte in byte_array))
 data_byte = byte_array[5 : (5 + 800)]
 num_list = []
 for i in range(0, len(data_byte), 2):
@@ -56,4 +60,4 @@ result = []
 for i in range(0, 800, 4):
     result.append(decoder.decode_32bit_uint())
 
-print(result)
+logger.info(result)

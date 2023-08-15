@@ -1,47 +1,48 @@
 import tkinter as tk
-import numpy as np
-from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from connect import scan_ports_and_connect
+from connect import scan_ports_and_connect, connect_port
 from indicator import Indicator
 from data_api import write_modbus
 from config import ConfigSingleton
 from custom_data import CustomData, DataMode
-from frame_chart import FrameChart, ChartMode
+from frame_chart import TimeChart, FFTChart
 from scheduler import Scheduler
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,  # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Set the log message format
+    handlers=[
+        logging.FileHandler("app.log"),  # Log to a file
+        logging.StreamHandler(),  # Log to the console
+    ],
+)
+
+logger = logging.getLogger(__name__)
 
 CONFIG = None
 CLIENT = None
 
 
-def plot_figure():
-    x = np.linspace(0, 2 * np.pi, 100)
-    y = np.sin(x)
-
-    fig = Figure(figsize=(3, 2))
-    ax = fig.add_subplot(111)
-    ax.plot(x, y)
-    ax.set_xlabel("X-axis")
-    ax.set_ylabel("Y-axis")
-    ax.set_title("Sine Wave")
-    ax.relim()
-    ax.autoscale_view()
-
-    return fig
-
-
 def close(
     indicator: Indicator,
     custom_data: CustomData,
-    time_chart: FrameChart,
-    fft_chart: FrameChart,
+    time_chart: TimeChart,
+    fft_chart: FFTChart,
     scheduler: Scheduler,
 ):
-    time_chart.stop()
-    fft_chart.stop()
-    indicator.stop()
-    custom_data.stop()
+    logger.info("Closing App...")
     scheduler.stop()
+    logger.info("Scheduled stopped")
+    time_chart.stop()
+    logger.info("Time chart closed")
+    fft_chart.stop()
+    logger.info("FFT chart closed")
+    indicator.stop()
+    logger.info("Indicator refresh stopped")
+    custom_data.stop()
+    logger.info("Chart data refresh stopped")
 
 
 START_DEVICE_WRITE_ADDRESS = ConfigSingleton().get_config()[
@@ -57,6 +58,7 @@ LOCK_LASER_WRITE_VALUE = ConfigSingleton().get_config()["LOCK_LASER_WRITE_VALUE"
 
 DDS_WRITE_ADDRESS = ConfigSingleton().get_config()["DDS_WRITE_ADDRESS"]
 DDS_WRITE_VALUE = ConfigSingleton().get_config()["DDS_WRITE_VALUE"]
+DEVICE_PORT = ConfigSingleton().get_config()["DEVICE_PORT"]
 
 
 def start_device():
@@ -89,9 +91,12 @@ def read_dds(custom_data: CustomData):
 
 def main():
     global CLIENT
-    clients = scan_ports_and_connect()
-    assert len(clients) == 1, "Can't find proper port to connect"
-    CLIENT = clients[0]
+    if DEVICE_PORT:
+        CLIENT = connect_port(DEVICE_PORT)
+    else:
+        clients = scan_ports_and_connect()
+        assert len(clients) == 1, "Can't find proper port to connect"
+        CLIENT = clients[0]
 
     try:
         root = tk.Tk()
@@ -214,11 +219,10 @@ def main():
         time_chart_frame = tk.Frame(chart_download_frame, bg="blue")
         time_chart_frame.pack(side=tk.TOP, fill="both", expand=True)
 
-        custom_data = CustomData(CLIENT)
-        time_chart = FrameChart(
+        custom_data = CustomData(CLIENT, scheduler.get_scheduler())
+        time_chart = TimeChart(
             custom_data,
             time_chart_frame,
-            ChartMode.TIME,
             lowpass_cutoff_entry,
             highpass_cutoff_entry,
         )
@@ -231,12 +235,9 @@ def main():
         fft_chart_frame = tk.Frame(chart_download_frame, bg="green")
         fft_chart_frame.pack(side=tk.TOP, fill="both", expand=True)
 
-        fft_chart = FrameChart(
+        fft_chart = FFTChart(
             custom_data,
             fft_chart_frame,
-            ChartMode.FFT,
-            lowpass_cutoff_entry,
-            highpass_cutoff_entry,
         )
 
         # download_frame = tk.Frame(chart_download_frame, height=10, pady=5)
@@ -248,11 +249,12 @@ def main():
         def on_closing():
             close(indicator, custom_data, time_chart, fft_chart, scheduler)
             root.destroy()
+            root.quit()
 
         root.protocol("WM_DELETE_WINDOW", on_closing)
 
         root.mainloop()
-    finally:
+    except:
         close(indicator, custom_data, time_chart, fft_chart, scheduler)
 
 

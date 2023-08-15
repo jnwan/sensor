@@ -9,6 +9,10 @@ import numpy as np
 
 from enum import Enum
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 SLAVE_ID = ConfigSingleton().get_config()["SLAVE_ID"]
 DISABLE_CRC = ConfigSingleton().get_config()["DISABLE_CRC"]
 
@@ -53,17 +57,17 @@ def read_modbus(
             raise TypeError(f"DataType {data_type} not supported!")
 
         if response.isError():
-            print(f"Error reading Modbus registers: {response}")
+            logger.error(f"Error reading Modbus registers: {response}")
         else:
             data = decode_data(response.registers, data_type)
-            print(
+            logger.info(
                 f"Data from Modbus device (Slave {SLAVE_ID}), "
                 f"starting address {address}: {response.registers}, "
                 f"Decoded value: {data}"
             )
             return data
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Error: {e}")
     return []
 
 
@@ -75,11 +79,11 @@ def write_modbus(
     try:
         modbus_client.connect()
         response = modbus_client.write_register(address, value, unit=SLAVE_ID)
-        print(
+        logger.info(
             f"Write {value} to addres {address} on unit {SLAVE_ID} response: {response}"
         )
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Error: {e}")
 
 
 def calculate_crc(data, polynomial=0x8005):
@@ -128,7 +132,7 @@ def read_custom_data(device: serial.Serial, command, data_type: DataType):
     try:
         device.write(bytes.fromhex(command))  # Send the command as bytes
     except Exception as e:
-        print(f"Error: Failed to send command to the device: {e}")
+        logger.error(f"Error: Failed to send command to the device: {e}")
         return None
 
     # Read data from the device (assuming the data follows the custom protocol)
@@ -143,12 +147,12 @@ def read_custom_data(device: serial.Serial, command, data_type: DataType):
         if not DISABLE_CRC and not validate_crc(
             byte_array[: (total_count - 2)], provided_crc
         ):
-            print("CRC validation failed")
+            logger.error("CRC validation failed")
             return None
 
-        # print("*************************************************")
-        # print("".join(format(byte, "02x") for byte in byte_array))
-        # print("*************************************************")
+        # logger.info("*************************************************")
+        # logger.info("".join(format(byte, "02x") for byte in byte_array))
+        # logger.info("*************************************************")
         data_byte = byte_array[5 : (5 + CUSTOM_PROTOCO_DATA_BYTE_COUNT)]
         num_16bit_list = []
         for i in range(0, len(data_byte), 2):
@@ -168,5 +172,5 @@ def read_custom_data(device: serial.Serial, command, data_type: DataType):
 
         return result
     except Exception as e:
-        print(f"Error: Failed to read data from the device: {e}")
+        logger.error(f"Error: Failed to read data from the device: {e}")
         return None

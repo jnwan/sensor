@@ -3,7 +3,9 @@ import time
 from pymodbus.client.sync import ModbusSerialClient as ModbusClient
 from config import ConfigSingleton
 
-from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 BAUDRATE = ConfigSingleton().get_config()["BAUDRATE"]
 SLAVE_ID = ConfigSingleton().get_config()["SLAVE_ID"]
@@ -26,12 +28,12 @@ def connect_port(port_name, baudrate=BAUDRATE, timeout=5):
             timeout=timeout,
         )
         modbus_client.connect()
-        print(f"Successfully connect to {ser.port}")
+        logger.info(f"Successfully connect to {ser.port}")
         return modbus_client
 
     except (OSError, serial.SerialException):
         # If there's an error opening the port or creating the client, ignore and move to the next port
-        print(f"Exception connecting to {port_name}")
+        logger.error(f"Exception connecting to {port_name}")
         return None
 
 
@@ -54,11 +56,11 @@ if __name__ == "__main__":
     modbus_clients = scan_ports_and_connect()
 
     if not modbus_clients:
-        print("No Modbus RTU devices found.")
+        logger.info("No Modbus RTU devices found.")
     else:
-        print(f"Found {len(modbus_clients)} Modbus RTU device(s):")
+        logger.info(f"Found {len(modbus_clients)} Modbus RTU device(s):")
         for index, client in enumerate(modbus_clients, start=1):
-            print(f"Device {index}: {client}")
+            logger.info(f"Device {index}: {client}")
 
             # Now you can use the client to interact with the Modbus RTU device.
             # For example, you can read/write holding registers, input registers, etc.

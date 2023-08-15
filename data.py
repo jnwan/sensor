@@ -1,5 +1,9 @@
 import csv
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class ModbusData:
     def __init__(self):

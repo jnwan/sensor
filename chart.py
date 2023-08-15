@@ -3,6 +3,10 @@ from matplotlib.animation import FuncAnimation
 from collections import deque
 import threading
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class LiveTimeSeriesPlot:
     def __init__(self, stop_flag: threading.Event, maxlen=60):

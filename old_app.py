@@ -12,6 +12,10 @@ from datetime import datetime
 
 from chart import LiveTimeSeriesPlot
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def read_modbus_registers(modbus_client: ModbusClient, slave_id, starting_address):
     try:
@@ -21,7 +25,7 @@ def read_modbus_registers(modbus_client: ModbusClient, slave_id, starting_addres
             starting_address, 4, unit=slave_id
         )
         if response.isError():
-            print(f"Error reading Modbus registers: {response}")
+            logger.info(f"Error reading Modbus registers: {response}")
         else:
             ints = response.registers[:2]
             floats = response.registers[2:]
@@ -33,14 +37,14 @@ def read_modbus_registers(modbus_client: ModbusClient, slave_id, starting_addres
             )
             int_val = int_decoder.decode_32bit_uint()
             float_val = float_decoder.decode_32bit_float()
-            print(
+            logger.info(
                 f"Data from Modbus device (Slave {slave_id}), "
                 f"starting address {starting_address}: {response.registers}, "
                 f"decoded value int: {int_val}, float: {float_val}"
             )
             return (int_val, float_val)
     except Exception as e:
-        print(f"Error: {e}")
+        logger.info(f"Error: {e}")
     return []
 
 

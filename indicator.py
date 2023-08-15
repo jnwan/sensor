@@ -6,6 +6,10 @@ from config import ConfigSingleton
 from pymodbus.client.sync import ModbusSerialClient as ModbusClient
 from data_api import read_modbus, DataType
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 TEMP_STABLE_INDICATOR_ADDRESS = ConfigSingleton().get_config()[
     "TEMP_STABLE_INDICATOR_ADDRESS"
 ]
@@ -38,49 +42,66 @@ class Indicator:
         self.laser_label = laser_label
         self.radio_label = radio_label
 
-        self.schedule_id = self.scheduler.enter(0, 5, self.refresh)
+        self.temp_on = False
+        self.laser_on = False
+        self.radio_on = False
+
+        self.schedule_id = None
+        self.refresh()
+        self.refresh_ui()
+
+        self.ui_event = []
 
     def __del__(self):
         self.stop()
 
     def stop(self):
-        try:
-            self.scheduler.cancel(self.schedule_id)
-        except:
-            pass
+        if self.schedule_id:
+            try:
+                self.scheduler.cancel(self.schedule_id)
+            except:
+                pass
+        if self.ui_event:
+            self.app.after_cancel(self.ui_event)
 
-    def update_incidator(self, address, true_value, label):
-        try:
-            if (
-                read_modbus(
-                    self.client,
-                    address,
-                    data_type=DataType.UINT16,
-                )
-                == true_value
-            ):
-                self.app.after(0, lambda: label.config(bg="green"))
-            else:
-                self.app.after(0, lambda: label.config(bg="grey"))
-        except Exception:
-            print(f"Exception when reading indicator data")
+    def refresh_ui(
+        self,
+    ) -> None:
+        self.ui_event = self.app.after(1000, self.refresh_ui)
+        self.temp_label.config(bg="green" if self.temp_on else "grey")
+        self.laser_label.config(bg="green" if self.laser_on else "grey")
+        self.radio_label.config(bg="green" if self.radio_on else "grey")
 
     def refresh(
         self,
     ) -> None:
+        try:
+            self.temp_on = (
+                read_modbus(
+                    self.client,
+                    TEMP_STABLE_INDICATOR_ADDRESS,
+                    data_type=DataType.UINT16,
+                )
+                == TEMP_STABLE_INDICATOR_VALUE
+            )
+
+            self.laser_on = (
+                read_modbus(
+                    self.client,
+                    LASER_CURRENT_LOCK_ADDRESS,
+                    data_type=DataType.UINT16,
+                )
+                == LASER_CURRENT_LOCK_VALUE
+            )
+
+            self.radio_on = (
+                read_modbus(
+                    self.client,
+                    RADIO_LOCK_ADDRESS,
+                    data_type=DataType.UINT16,
+                )
+                == RADIO_LOCK_VALUE
+            )
+        except:
+            logger.info(f"Exception when reading indicator data")
         self.schedule_id = self.scheduler.enter(1, 5, self.refresh)
-        self.update_incidator(
-            TEMP_STABLE_INDICATOR_ADDRESS,
-            TEMP_STABLE_INDICATOR_VALUE,
-            self.temp_label,
-        )
-        self.update_incidator(
-            LASER_CURRENT_LOCK_ADDRESS,
-            LASER_CURRENT_LOCK_VALUE,
-            self.laser_label,
-        )
-        self.update_incidator(
-            RADIO_LOCK_ADDRESS,
-            RADIO_LOCK_VALUE,
-            self.radio_label,
-        )

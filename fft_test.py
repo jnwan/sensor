@@ -1,6 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # 生成时域信号
 Fs = 1000  # 采样率
 t = np.linspace(0, 1, Fs, endpoint=False)  # 时间范围为0到1秒

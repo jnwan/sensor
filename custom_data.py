@@ -3,12 +3,17 @@ import threading
 from config import ConfigSingleton
 from pymodbus.client.sync import ModbusSerialClient as ModbusClient
 from data_api import read_modbus, DataType, read_custom_data
+import sched
 
 from datetime import datetime, timedelta
 
 from enum import Enum
 from collections import deque
 import csv
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class DataMode(Enum):
@@ -29,15 +34,13 @@ class CustomData:
     def __init__(
         self,
         modbus_client: ModbusClient,
+        scheduler: sched.scheduler,
         data_mode: DataMode = DataMode.SIN,
     ) -> None:
         self.client = modbus_client
+        self.scheduler = scheduler
         self.data_mode = data_mode
         self.stop_flag = threading.Event()
-        self.thread = threading.Thread(
-            target=self.refresh,
-        )
-        self.thread.daemon = True
         self.processor = threading.Thread(
             target=self.process,
         )
@@ -64,6 +67,8 @@ class CustomData:
         self.dds_csv_writer = csv.writer(self.dds_file)
 
         self.running = False
+
+        self.scheduler_id = None
 
     def __del__(self):
         self.stop()
@@ -110,7 +115,10 @@ class CustomData:
 
     def process(self):
         while not self.stop_flag.is_set():
-            if self.data_mode == DataMode.SIN:
+            current_data_mode = DataMode.SIN
+            with self.lock:
+                current_data_mode = self.data_mode
+            if current_data_mode == DataMode.SIN:
                 self.process_data(
                     self.sin_data,
                     self.original_sin_data,
@@ -127,8 +135,6 @@ class CustomData:
             time.sleep(0.05)
 
     def start(self):
-        if not self.thread.is_alive():
-            self.thread.start()
         if not self.processor.is_alive():
             self.processor.start()
 
@@ -138,11 +144,10 @@ class CustomData:
         if not self.running:
             self.running = True
             self.start()
+            self.refresh()
 
     def stop(self):
         self.stop_flag.set()
-        if self.thread.is_alive():
-            self.thread.join(timeout=5)
 
         if self.processor.is_alive():
             self.processor.join(timeout=5)
@@ -155,35 +160,39 @@ class CustomData:
             self.dds_file.close()
             self.dds_file = None
 
+        if self.scheduler_id:
+            try:
+                self.scheduler.cancel(self.scheduler_id)
+            except:
+                pass
+
     def refresh(
         self,
     ) -> None:
-        while not self.stop_flag.is_set():
-            current_data_mode = DataMode.SIN
-            with self.lock:
-                current_data_mode = self.data_mode
-                self.current_time = (
-                    datetime.now()
-                    if self.current_time is None
-                    else self.current_time
-                    + timedelta(milliseconds=CUSTOM_PROTOCO_FREQUENCY)
-                )
-            self.client.connect()
-            response = read_custom_data(
-                self.client.socket,
-                READ_SIN_DATA_CMD
-                if current_data_mode == DataMode.SIN
-                else READ_DDS_DATA_CMD,
-                DataType.FLOAT32
-                if current_data_mode == DataMode.SIN
-                else DataType.UINT32,
+        current_data_mode = DataMode.SIN
+        with self.lock:
+            current_data_mode = self.data_mode
+        self.current_time = (
+            datetime.now()
+            if self.current_time is None
+            else self.current_time + timedelta(milliseconds=CUSTOM_PROTOCO_FREQUENCY)
+        )
+        self.client.connect()
+        response = read_custom_data(
+            self.client.socket,
+            READ_SIN_DATA_CMD
+            if current_data_mode == DataMode.SIN
+            else READ_DDS_DATA_CMD,
+            DataType.FLOAT32 if current_data_mode == DataMode.SIN else DataType.UINT32,
+        )
+        if response is not None and len(response) > 0:
+            if current_data_mode == DataMode.SIN:
+                self.sin_data.append((self.current_time, response))
+            else:
+                self.dds_data.append((self.current_time, response))
+            logger.info(
+                f"Get {len(response)} data points from device at {self.current_time}"
             )
-            if response is not None and len(response) > 0:
-                if current_data_mode == DataMode.SIN:
-                    self.sin_data.append((self.current_time, response))
-                else:
-                    self.dds_data.append((self.current_time, response))
-                print(
-                    f"Get {len(response)} data points from device at {self.current_time}"
-                )
-            time.sleep(SLEEP_TIME_MS * 1.0 / 1000)
+        self.scheduler_id = self.scheduler.enter(
+            SLEEP_TIME_MS * 1.0 / 1000, 1, self.refresh
+        )
