@@ -95,9 +95,10 @@ class CustomData:
         if q_data:
             t, data = q_data.popleft()
 
-            original_data.extend(
+            orginal_timed_data = [
                 (t + timedelta(milliseconds=i), x) for i, x in enumerate(data)
-            )
+            ]
+            original_data.extend(orginal_timed_data)
 
             avgs = []
             for i in range(0, len(data), DATA_PRINT_AVG_COUNT):
@@ -112,7 +113,7 @@ class CustomData:
 
             processed_data.extend(timed_data)
             if self.download_on:
-                csv_writer.writerows(original_data)
+                csv_writer.writerows([[val] for _, val in orginal_timed_data])
         else:
             pass
 

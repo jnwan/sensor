@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 DATA_FREQUENCY = ConfigSingleton().get_config()["DATA_FREQUENCY"]
 DATA_PRINT_AVG_COUNT = ConfigSingleton().get_config()["DATA_FREQUENCY"]
+CHART_REFRESH_RATE = ConfigSingleton().get_config()["CHART_REFRESH_RATE"]
 
 
 class TimeChart:
@@ -44,15 +45,15 @@ class TimeChart:
 
     def __del__(self):
         self.stop()
-        plt.close()
 
     def stop(self):
         self.running = False
         self.master.after_cancel(self.schedule_id)
+        plt.close()
 
     def update(self):
         if self.running:
-            self.schedule_id = self.master.after(1000, self.update)
+            self.schedule_id = self.master.after(CHART_REFRESH_RATE, self.update)
         prcessed_data = self.custom_data.get_processed_data()
         if prcessed_data:
             logger.info(f"Got processed data length: {len(prcessed_data)}")
@@ -78,7 +79,8 @@ class TimeChart:
 
         self.ax.relim()
         self.ax.autoscale_view()
-        self.canvas.draw()
+        if self.running:
+            self.canvas.draw()
 
 
 class FFTChart:
@@ -111,7 +113,7 @@ class FFTChart:
 
     def update(self):
         if self.running:
-            self.schedule_id = self.master.after(1000, self.update)
+            self.schedule_id = self.master.after(CHART_REFRESH_RATE, self.update)
         data = self.custom_data.get_original_data()
         if data:
             times, raw_data = zip(*data)
@@ -123,4 +125,5 @@ class FFTChart:
 
         self.ax.relim()
         self.ax.autoscale_view()
-        self.canvas.draw()
+        if self.running:
+            self.canvas.draw()

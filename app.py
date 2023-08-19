@@ -22,7 +22,6 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-CONFIG = None
 CLIENT = None
 
 
@@ -43,7 +42,7 @@ def close(
     indicator.stop()
     logger.info("Indicator refresh stopped")
     scheduler.stop()
-    logger.info("Scheduled stopped")
+    logger.info("Scheduler stopped")
 
 
 START_DEVICE_WRITE_ADDRESS = ConfigSingleton().get_config()[
@@ -107,8 +106,8 @@ def main():
         scheduler = Scheduler()
 
         # Create two frames for the sections
-        left_frame = customtkinter.CTkFrame(root)  # First section with 1/3 width
-        right_frame = customtkinter.CTkFrame(root)  # Second section with 2/3 width
+        left_frame = customtkinter.CTkFrame(root)
+        right_frame = customtkinter.CTkFrame(root)
 
         # Define the grid layout
         root.grid_rowconfigure(0, weight=1)
@@ -167,9 +166,6 @@ def main():
         buttons_frame.grid_rowconfigure(1, weight=1)
         buttons_frame.grid_rowconfigure(2, weight=1)
         buttons_frame.grid_rowconfigure(3, weight=1)
-
-        # connect_button = customtkinter.CTkButton(buttons_frame, text="建立连接")
-        # connect_button.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
         start_button = customtkinter.CTkButton(
             buttons_frame, text="启动设备", command=start_device
@@ -255,11 +251,6 @@ def main():
             highpass_cutoff_entry,
         )
 
-        # Embed the plot in the frame
-        # canvas = FigureCanvasTkAgg(time_chart.get_fig(), master=time_chart_frame)
-        # canvas.draw()
-        # canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
-
         fft_chart_frame = customtkinter.CTkFrame(chart_download_frame)
         fft_chart_frame.pack(side=tk.TOP, fill="both", expand=True)
 
@@ -267,14 +258,6 @@ def main():
             custom_data,
             fft_chart_frame,
         )
-
-        # download_frame = customtkinter.CTkFrame(chart_download_frame)
-        # download_frame.pack(side=customtkinter.BOTTOM, fill="x")
-
-        # download_button = customtkinter.CTkButton(
-        #     download_frame, text="Download", width=10
-        # )
-        # download_button.pack(side=customtkinter.RIGHT)
 
         def on_closing():
             close(indicator, custom_data, time_chart, fft_chart, scheduler)
